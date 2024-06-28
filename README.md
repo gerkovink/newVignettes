@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12586939.svg)](https://doi.org/10.5281/zenodo.12586939)
+
 # Mice vignettes in a new style. 
 New and improved quarto-based [`mice`](https://www.amices.org) vignettes with [`ggmice`](https://github.com/amices/ggmice) plots, accessible data for sensitivity analysis and many bug-fixes. 
 
