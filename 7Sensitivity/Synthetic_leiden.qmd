@@ -1,0 +1,260 @@
+---
+title: "`mice`: An approach to sensitivity analysis"
+author: "Gerko Vink and Stef van Buuren"
+format: html
+editor: visual
+---
+
+------------------------------------------------------------------------
+
+```{r message=FALSE, warning=FALSE}
+set.seed(123)
+library("mice")
+library("lattice")
+library("survival")
+library(dplyr)
+library(tidyverse)
+library(ggmice)
+library(patchwork)
+library(synthpop)
+```
+
+------------------------------------------------------------------------
+
+Loading and arranging data
+
+```{r}
+
+load("leiden.rData")
+
+summary(leiden)
+str(leiden)
+head(leiden)
+tail(leiden)
+
+leiden$sexe <- factor(leiden$sexe, levels = c(0, 1), labels = c("0", "1"))
+leiden$dwa <- factor(leiden$dwa, levels = c(0, 1), labels = c("0", "1"))
+leiden$woon <- factor(leiden$woon, levels = c(0, 1, 2, 3, 4), labels = c("0", "1", "2", "3", "4"))
+
+summary(leiden)
+str(leiden)
+head(leiden)
+tail(leiden)
+
+```
+
+## 2. Parametric approch for synthetic data
+
+```{r}
+
+where <- make.where(leiden, "all")
+method <- make.method(leiden, where = where)
+missing <- is.na(leiden)
+
+method[method == "pmm"] <- "norm"
+
+syn_param <- mice(leiden, 
+                  m = 10, 
+                  maxit = 1,
+                  method = method,
+                  where = where,
+                  printFlag = FALSE)
+
+
+
+impd <- Map(function(imp_element, column_index) {
+    na_indices <- which(is.na(leiden[, column_index]))
+    imp_element[na_indices, ] <- NA
+    imp_element
+}, syn_param$imp, seq_along(syn_param$imp))
+
+
+```
+
+**3. Perform a dry run (using `maxit = 0`) in `mice`. List the number of missing values per variable.**
+
+```{r}
+ini <- mice(leiden, maxit = 0)
+sort(ini$nmis)
+sort(syn_param$nmis)
+```
+
+------------------------------------------------------------------------
+
+4.  To get an idea of whether creating the synthetic data went accordingly, compare the 10 rows of the fourth synthetic data set with the first 10 rows of the original data.
+
+```{r}
+#| eval: false
+complete(syn_param, 4) |> 
+  head(10)
+leiden |> 
+  head(10)
+```
+
+```{r}
+#| echo: false
+complete(syn_param, 4) |> 
+  head(10) |>
+  knitr::kable() |>
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover")) |>
+  kableExtra::scroll_box(width = "100%")
+
+leiden |> 
+  head(10) |>
+  knitr::kable() |>
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover")) |>
+  kableExtra::scroll_box(width = "100%")
+```
+
+### 5. data visualization
+
+```{r}
+
+complete(syn_param, 6) |>
+  psych::describe()
+
+leiden |>
+  psych::describe()
+
+```
+
+6.  Create a bar plot using `geom_bar()` for each categorical variable in the data, mapping these variables to the `x`-axis with one bar per category per imputed data set.
+
+```{r}
+colnames(leiden)[map_lgl(leiden, is.factor)] %>%
+  map(~ ggmice(syn_param, mapping = aes_string(.x, group = '.imp')) +
+        geom_bar(mapping = aes(y = ..prop..),
+                 position = position_dodge2(),
+                 fill = "transparent",
+                 show.legend = FALSE)) %>% 
+  patchwork::wrap_plots()
+
+
+colnames(leiden)[map_lgl(leiden, is.numeric)] %>%
+  map(~ ggmice(data = syn_param, 
+               mapping = aes_string(x = .x, group = '.imp')) +
+        geom_density(show.legend = F)) %>%
+  wrap_plots(ncol = 2)
+```
+
+## 7. Non-parametric approach to synthesize data
+
+```{r}
+
+syn_cart <- mice(leiden, 
+                 m = 10, 
+                 maxit = 1,
+                 method = "cart",
+                 where = where,
+                 printFlag = FALSE)
+
+
+syn_cart$imp <- Map(function(imp_element, column_index) {
+    na_indices <- which(is.na(leiden[, column_index]))
+    imp_element[na_indices, ] <- NA
+    imp_element
+}, syn_cart$imp, seq_along(syn_cart$imp))
+
+```
+
+**8. Perform a dry run (using `maxit = 0`) in `mice`. List the number of missing values per variable.**
+
+```{r}
+
+ini <- mice(leiden, maxit = 0)
+sort(ini$nmis)
+sort(syn_cart$nmis)
+
+```
+
+9.  Create a bar plot using `geom_bar()` for each categorical variable in the data, mapping these variables to the `x`-axis with one bar per category per imputed data set.
+
+```{r}
+
+colnames(leiden)[map_lgl(leiden, is.factor)] %>%
+  map(~ ggmice(syn_cart, mapping = aes_string(.x, group = '.imp')) +
+        geom_bar(mapping = aes(y = ..prop..),
+                 position = position_dodge2(),
+                 fill = "transparent",
+                 show.legend = FALSE)) %>% 
+  patchwork::wrap_plots()
+
+colnames(leiden)[map_lgl(leiden, is.numeric)] %>%
+  map(~ ggmice(data = syn_cart, 
+               mapping = aes_string(x = .x, group = '.imp')) +
+        geom_density(show.legend = F)) %>%
+  wrap_plots(ncol = 2)
+
+```
+
+10. Calculate the pMSE for the selected variables
+
+```{r}
+
+param_mse <- complete(syn_param, "all", include = FALSE) |>
+  utility.gen.list(leiden, 
+                   vars = c("survda", "rrsyst", "rrdiast"),
+                   maxorder = 0, 
+                   method = "logit")
+
+param_mse
+
+
+cart_mse <- complete(syn_cart, "all", include = FALSE) |>
+  utility.gen.list(leiden, 
+                   vars = c("survda", "rrsyst", "rrdiast"), 
+                   maxorder = 0, 
+                   method = "logit")
+
+cart_mse
+
+cart_mse <- mean(cart_mse$pMSE) / ((4-1)*(1/2)^3/(2*nrow(leiden)))
+param_mse <- mean(param_mse$pMSE) / ((4-1)*(1/2)^3/(2*nrow(leiden)))
+
+```
+
+## Multivariate data utility
+
+### General utility measures
+
+11. Use the function `utility.gen.list()` from the `synthpop` package to calculate the $pMSE$-ratio for each pair of variables for both synthetic sets. What do you see?\_\_
+
+```{r}
+param_dats <- complete(syn_param, "all", include = F)
+cart_dats <- complete(syn_cart, "all", include = F)
+
+utility.gen.list(param_dats, leiden)
+utility.gen.list(cart_dats, leiden)
+
+```
+
+12. Use the function utility.tables.list() from the synthpop package to calculate the -ratio for each pair of variables for both synthetic sets. What do you see?
+
+```{r}
+utility.tables.list(param_dats, leiden,
+                    min.scale = 0, max.scale = 40)
+
+utility.tables.list(cart_dats, leiden,
+                    min.scale = 0, max.scale = 40)
+```
+
+13. Append the original data to the synthetic data, and check whether some of the observations in the original data also occur in the synthetic data.
+
+```{r}
+
+
+combined_data <- complete(syn_cart, "long") %>%
+  dplyr::bind_rows(leiden)
+
+duplicated_index <- combined_data %>%
+  duplicated %>%
+  which()
+
+duplicated_index
+
+synthetic_leiden <- complete(syn_cart, 2)
+
+save(synthetic_leiden, file = "syntheticData_2.RData")
+
+
+```

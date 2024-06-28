@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.433">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Gerko Vink and Stef van Buuren">
+
+<title>mice: An approach to sensitivity analysis</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="Synthetic_leiden_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Synthetic_leiden_files/libs/quarto-html/quarto.js"></script>
+<script src="Synthetic_leiden_files/libs/quarto-html/popper.min.js"></script>
+<script src="Synthetic_leiden_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Synthetic_leiden_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Synthetic_leiden_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Synthetic_leiden_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Synthetic_leiden_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Synthetic_leiden_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Synthetic_leiden_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+<script src="Synthetic_leiden_files/libs/kePrint-0.0.1/kePrint.js"></script>
+<link href="Synthetic_leiden_files/libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><code>mice</code>: An approach to sensitivity analysis</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Gerko Vink and Stef van Buuren </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<hr>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">"mice"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">"lattice"</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">"survival"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggmice)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(patchwork)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(synthpop)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<hr>
+<p>Loading and arranging data</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"leiden.rData"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(leiden)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      sexe           lftanam           rrsyst         rrdiast      
+ Min.   :0.0000   Min.   : 85.48   Min.   : 90.0   Min.   : 50.00  
+ 1st Qu.:0.0000   1st Qu.: 87.50   1st Qu.:135.0   1st Qu.: 75.00  
+ Median :0.0000   Median : 89.07   Median :150.0   Median : 80.00  
+ Mean   :0.2709   Mean   : 89.78   Mean   :152.9   Mean   : 82.78  
+ 3rd Qu.:1.0000   3rd Qu.: 91.52   3rd Qu.:170.0   3rd Qu.: 90.00  
+ Max.   :1.0000   Max.   :103.54   Max.   :260.0   Max.   :140.00  
+                                   NA's   :121     NA's   :126     
+      dwa             survda            alb             chol       
+ Min.   :0.0000   Min.   :   2.0   Min.   :21.00   Min.   : 2.700  
+ 1st Qu.:0.0000   1st Qu.: 534.8   1st Qu.:39.00   1st Qu.: 4.800  
+ Median :0.0000   Median :1196.5   Median :41.00   Median : 5.700  
+ Mean   :0.2437   Mean   :1195.4   Mean   :40.77   Mean   : 5.704  
+ 3rd Qu.:0.0000   3rd Qu.:1889.0   3rd Qu.:43.00   3rd Qu.: 6.400  
+ Max.   :1.0000   Max.   :2610.0   Max.   :52.00   Max.   :10.900  
+                                   NA's   :229     NA's   :232     
+      mmse            woon      
+ Min.   : 1.00   Min.   :0.000  
+ 1st Qu.:21.00   1st Qu.:0.000  
+ Median :26.00   Median :3.000  
+ Mean   :23.67   Mean   :1.775  
+ 3rd Qu.:29.00   3rd Qu.:3.000  
+ Max.   :30.00   Max.   :4.000  
+ NA's   :85                     </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(leiden)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'data.frame':   956 obs. of  10 variables:
+ $ sexe   : num  0 0 0 0 0 0 0 1 1 0 ...
+ $ lftanam: num  87.8 87.8 89.1 90.3 87.8 ...
+ $ rrsyst : num  160 140 155 155 110 120 180 135 130 160 ...
+ $ rrdiast: num  100 70 85 90 60 80 75 80 60 90 ...
+ $ dwa    : num  0 0 0 0 0 0 0 0 0 0 ...
+ $ survda : num  1082 27 1604 528 1100 ...
+ $ alb    : num  41 NA 41 44 37 NA 42 NA 45 46 ...
+ $ chol   : num  4.4 NA 4.6 3.9 5.3 NA 7.2 NA 5.1 6.5 ...
+ $ mmse   : num  12 9 25 27 14 NA 28 26 30 14 ...
+ $ woon   : num  4 3 0 1 0 3 3 0 4 4 ...</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(leiden)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  sexe lftanam rrsyst rrdiast dwa survda alb chol mmse woon
+1    0   87.80    160     100   0   1082  41  4.4   12    4
+2    0   87.75    140      70   0     27  NA   NA    9    3
+3    0   89.08    155      85   0   1604  41  4.6   25    0
+4    0   90.29    155      90   0    528  44  3.9   27    1
+5    0   87.76    110      60   0   1100  37  5.3   14    0
+6    0   91.39    120      80   0      5  NA   NA   NA    3</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(leiden)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     sexe lftanam rrsyst rrdiast dwa survda alb chol mmse woon
+1229    1   93.85    130      70   0    523  40  5.3   28    0
+1230    0   92.20    190      90   0   1182  44  5.8   26    3
+1232    0   95.02    150      80   0    861  35  5.0   28    0
+1233    0   88.30    120      60   0    129  42  8.6   21    0
+1235    1   89.02    140      80   0    374  40  5.2   23    0
+1236    0   85.70    130      65   0   1744  36  7.2   27    3</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>leiden<span class="sc">$</span>sexe <span class="ot">&lt;-</span> <span class="fu">factor</span>(leiden<span class="sc">$</span>sexe, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"0"</span>, <span class="st">"1"</span>))</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>leiden<span class="sc">$</span>dwa <span class="ot">&lt;-</span> <span class="fu">factor</span>(leiden<span class="sc">$</span>dwa, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"0"</span>, <span class="st">"1"</span>))</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>leiden<span class="sc">$</span>woon <span class="ot">&lt;-</span> <span class="fu">factor</span>(leiden<span class="sc">$</span>woon, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">4</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"0"</span>, <span class="st">"1"</span>, <span class="st">"2"</span>, <span class="st">"3"</span>, <span class="st">"4"</span>))</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(leiden)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> sexe       lftanam           rrsyst         rrdiast       dwa    
+ 0:697   Min.   : 85.48   Min.   : 90.0   Min.   : 50.00   0:723  
+ 1:259   1st Qu.: 87.50   1st Qu.:135.0   1st Qu.: 75.00   1:233  
+         Median : 89.07   Median :150.0   Median : 80.00          
+         Mean   : 89.78   Mean   :152.9   Mean   : 82.78          
+         3rd Qu.: 91.52   3rd Qu.:170.0   3rd Qu.: 90.00          
+         Max.   :103.54   Max.   :260.0   Max.   :140.00          
+                          NA's   :121     NA's   :126             
+     survda            alb             chol             mmse       woon   
+ Min.   :   2.0   Min.   :21.00   Min.   : 2.700   Min.   : 1.00   0:394  
+ 1st Qu.: 534.8   1st Qu.:39.00   1st Qu.: 4.800   1st Qu.:21.00   1: 34  
+ Median :1196.5   Median :41.00   Median : 5.700   Median :26.00   2: 46  
+ Mean   :1195.4   Mean   :40.77   Mean   : 5.704   Mean   :23.67   3:357  
+ 3rd Qu.:1889.0   3rd Qu.:43.00   3rd Qu.: 6.400   3rd Qu.:29.00   4:125  
+ Max.   :2610.0   Max.   :52.00   Max.   :10.900   Max.   :30.00          
+                  NA's   :229     NA's   :232      NA's   :85             </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(leiden)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'data.frame':   956 obs. of  10 variables:
+ $ sexe   : Factor w/ 2 levels "0","1": 1 1 1 1 1 1 1 2 2 1 ...
+ $ lftanam: num  87.8 87.8 89.1 90.3 87.8 ...
+ $ rrsyst : num  160 140 155 155 110 120 180 135 130 160 ...
+ $ rrdiast: num  100 70 85 90 60 80 75 80 60 90 ...
+ $ dwa    : Factor w/ 2 levels "0","1": 1 1 1 1 1 1 1 1 1 1 ...
+ $ survda : num  1082 27 1604 528 1100 ...
+ $ alb    : num  41 NA 41 44 37 NA 42 NA 45 46 ...
+ $ chol   : num  4.4 NA 4.6 3.9 5.3 NA 7.2 NA 5.1 6.5 ...
+ $ mmse   : num  12 9 25 27 14 NA 28 26 30 14 ...
+ $ woon   : Factor w/ 5 levels "0","1","2","3",..: 5 4 1 2 1 4 4 1 5 5 ...</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(leiden)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  sexe lftanam rrsyst rrdiast dwa survda alb chol mmse woon
+1    0   87.80    160     100   0   1082  41  4.4   12    4
+2    0   87.75    140      70   0     27  NA   NA    9    3
+3    0   89.08    155      85   0   1604  41  4.6   25    0
+4    0   90.29    155      90   0    528  44  3.9   27    1
+5    0   87.76    110      60   0   1100  37  5.3   14    0
+6    0   91.39    120      80   0      5  NA   NA   NA    3</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(leiden)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     sexe lftanam rrsyst rrdiast dwa survda alb chol mmse woon
+1229    1   93.85    130      70   0    523  40  5.3   28    0
+1230    0   92.20    190      90   0   1182  44  5.8   26    3
+1232    0   95.02    150      80   0    861  35  5.0   28    0
+1233    0   88.30    120      60   0    129  42  8.6   21    0
+1235    1   89.02    140      80   0    374  40  5.2   23    0
+1236    0   85.70    130      65   0   1744  36  7.2   27    3</code></pre>
+</div>
+</div>
+<section id="parametric-approch-for-synthetic-data" class="level2">
+<h2 class="anchored" data-anchor-id="parametric-approch-for-synthetic-data">2. Parametric approch for synthetic data</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>where <span class="ot">&lt;-</span> <span class="fu">make.where</span>(leiden, <span class="st">"all"</span>)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>method <span class="ot">&lt;-</span> <span class="fu">make.method</span>(leiden, <span class="at">where =</span> where)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>missing <span class="ot">&lt;-</span> <span class="fu">is.na</span>(leiden)</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>method[method <span class="sc">==</span> <span class="st">"pmm"</span>] <span class="ot">&lt;-</span> <span class="st">"norm"</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>syn_param <span class="ot">&lt;-</span> <span class="fu">mice</span>(leiden, </span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>                  <span class="at">m =</span> <span class="dv">10</span>, </span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>                  <span class="at">maxit =</span> <span class="dv">1</span>,</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>                  <span class="at">method =</span> method,</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>                  <span class="at">where =</span> where,</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>                  <span class="at">printFlag =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>impd <span class="ot">&lt;-</span> <span class="fu">Map</span>(<span class="cf">function</span>(imp_element, column_index) {</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>    na_indices <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="fu">is.na</span>(leiden[, column_index]))</span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>    imp_element[na_indices, ] <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>    imp_element</span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>}, syn_param<span class="sc">$</span>imp, <span class="fu">seq_along</span>(syn_param<span class="sc">$</span>imp))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p><strong>3. Perform a dry run (using <code>maxit = 0</code>) in <code>mice</code>. List the number of missing values per variable.</strong></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>ini <span class="ot">&lt;-</span> <span class="fu">mice</span>(leiden, <span class="at">maxit =</span> <span class="dv">0</span>)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sort</span>(ini<span class="sc">$</span>nmis)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   sexe lftanam     dwa  survda    woon    mmse  rrsyst rrdiast     alb    chol 
+      0       0       0       0       0      85     121     126     229     232 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sort</span>(syn_param<span class="sc">$</span>nmis)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   sexe lftanam     dwa  survda    woon    mmse  rrsyst rrdiast     alb    chol 
+      0       0       0       0       0      85     121     126     229     232 </code></pre>
+</div>
+</div>
+<hr>
+<ol start="4" type="1">
+<li>To get an idea of whether creating the synthetic data went accordingly, compare the 10 rows of the fourth synthetic data set with the first 10 rows of the original data.</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">complete</span>(syn_param, <span class="dv">4</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>leiden <span class="sc">|&gt;</span> </span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div style="border: 1px solid #ddd; padding: 5px; overflow-x: scroll; width:100%; ">
+<table class="table table-striped table-hover table-sm small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">sexe</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">lftanam</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">rrsyst</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">rrdiast</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">dwa</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">survda</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">alb</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">chol</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">mmse</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">woon</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">91.12601</td>
+<td style="text-align: right;">170.2284</td>
+<td style="text-align: right;">77.97229</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">133.7017</td>
+<td style="text-align: right;">36.12976</td>
+<td style="text-align: right;">6.291575</td>
+<td style="text-align: right;">26.57883</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">93.45669</td>
+<td style="text-align: right;">134.9349</td>
+<td style="text-align: right;">92.31398</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">1520.5880</td>
+<td style="text-align: right;">39.22771</td>
+<td style="text-align: right;">5.956016</td>
+<td style="text-align: right;">24.35462</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">93.34282</td>
+<td style="text-align: right;">132.0292</td>
+<td style="text-align: right;">61.92429</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">740.2282</td>
+<td style="text-align: right;">40.34946</td>
+<td style="text-align: right;">7.760790</td>
+<td style="text-align: right;">22.45311</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">91.94595</td>
+<td style="text-align: right;">182.3169</td>
+<td style="text-align: right;">81.08294</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">227.5029</td>
+<td style="text-align: right;">44.85181</td>
+<td style="text-align: right;">7.163870</td>
+<td style="text-align: right;">24.97173</td>
+<td style="text-align: left;">4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">91.19062</td>
+<td style="text-align: right;">133.7812</td>
+<td style="text-align: right;">61.44630</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">602.2202</td>
+<td style="text-align: right;">43.88407</td>
+<td style="text-align: right;">5.695898</td>
+<td style="text-align: right;">20.34968</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">86.67453</td>
+<td style="text-align: right;">173.9873</td>
+<td style="text-align: right;">68.19271</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">1036.6158</td>
+<td style="text-align: right;">41.89373</td>
+<td style="text-align: right;">4.963542</td>
+<td style="text-align: right;">27.14842</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">92.79922</td>
+<td style="text-align: right;">164.3517</td>
+<td style="text-align: right;">70.38214</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">200.0684</td>
+<td style="text-align: right;">49.00028</td>
+<td style="text-align: right;">6.413988</td>
+<td style="text-align: right;">23.53094</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">88.65806</td>
+<td style="text-align: right;">141.0620</td>
+<td style="text-align: right;">72.07872</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">1131.9118</td>
+<td style="text-align: right;">44.65013</td>
+<td style="text-align: right;">7.197434</td>
+<td style="text-align: right;">27.61601</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">88.75973</td>
+<td style="text-align: right;">121.8957</td>
+<td style="text-align: right;">69.70716</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">1024.4234</td>
+<td style="text-align: right;">39.38867</td>
+<td style="text-align: right;">4.672269</td>
+<td style="text-align: right;">25.59373</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">93.84398</td>
+<td style="text-align: right;">197.2776</td>
+<td style="text-align: right;">86.64754</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">832.6688</td>
+<td style="text-align: right;">35.71418</td>
+<td style="text-align: right;">7.372064</td>
+<td style="text-align: right;">18.90310</td>
+<td style="text-align: left;">4</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</div>
+<div class="cell-output-display">
+<div style="border: 1px solid #ddd; padding: 5px; overflow-x: scroll; width:100%; ">
+<table class="table table-striped table-hover table-sm small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">sexe</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">lftanam</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">rrsyst</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">rrdiast</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">dwa</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">survda</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">alb</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">chol</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">mmse</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">woon</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">87.80</td>
+<td style="text-align: right;">160</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">1082</td>
+<td style="text-align: right;">41</td>
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">87.75</td>
+<td style="text-align: right;">140</td>
+<td style="text-align: right;">70</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">27</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">89.08</td>
+<td style="text-align: right;">155</td>
+<td style="text-align: right;">85</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">1604</td>
+<td style="text-align: right;">41</td>
+<td style="text-align: right;">4.6</td>
+<td style="text-align: right;">25</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">90.29</td>
+<td style="text-align: right;">155</td>
+<td style="text-align: right;">90</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">528</td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">3.9</td>
+<td style="text-align: right;">27</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">87.76</td>
+<td style="text-align: right;">110</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">1100</td>
+<td style="text-align: right;">37</td>
+<td style="text-align: right;">5.3</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">91.39</td>
+<td style="text-align: right;">120</td>
+<td style="text-align: right;">80</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">90.35</td>
+<td style="text-align: right;">180</td>
+<td style="text-align: right;">75</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">1573</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">7.2</td>
+<td style="text-align: right;">28</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">86.06</td>
+<td style="text-align: right;">135</td>
+<td style="text-align: right;">80</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">26</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">95.17</td>
+<td style="text-align: right;">130</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">1302</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: left;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">86.13</td>
+<td style="text-align: right;">160</td>
+<td style="text-align: right;">90</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">794</td>
+<td style="text-align: right;">46</td>
+<td style="text-align: right;">6.5</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: left;">4</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</div>
+<section id="data-visualization" class="level3">
+<h3 class="anchored" data-anchor-id="data-visualization">5. data visualization</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">complete</span>(syn_param, <span class="dv">6</span>) <span class="sc">|&gt;</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  psych<span class="sc">::</span><span class="fu">describe</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Registered S3 method overwritten by 'psych':
+  method         from  
+  plot.residuals rmutil</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        vars   n    mean     sd  median trimmed    mad      min     max   range
+sexe*      1 956    1.28   0.45    1.00    1.22   0.00     1.00    2.00    1.00
+lftanam    2 956   89.83   2.87   89.89   89.87   2.95    80.48   98.07   17.59
+rrsyst     3 956  154.46  26.45  155.07  154.99  25.67    74.51  239.99  165.48
+rrdiast    4 956   82.93  13.46   82.92   82.95  13.16    26.81  130.24  103.43
+dwa*       5 956    1.25   0.43    1.00    1.19   0.00     1.00    2.00    1.00
+survda     6 956 1195.91 715.26 1119.87 1169.83 712.32 -1186.09 3446.32 4632.42
+alb        7 956   40.87   3.77   40.81   40.84   3.84    30.40   51.76   21.36
+chol       8 956    5.76   1.27    5.78    5.78   1.34     1.51    9.18    7.67
+mmse       9 956   23.60   6.98   23.56   23.57   7.00    -2.85   43.37   46.22
+woon*     10 956    2.85   1.59    4.00    2.81   1.48     1.00    5.00    4.00
+         skew kurtosis    se
+sexe*    0.99    -1.02  0.01
+lftanam -0.13    -0.10  0.09
+rrsyst  -0.16     0.03  0.86
+rrdiast -0.02     0.09  0.44
+dwa*     1.17    -0.64  0.01
+survda   0.31    -0.18 23.13
+alb      0.06    -0.15  0.12
+chol    -0.13    -0.28  0.04
+mmse     0.00     0.06  0.23
+woon*   -0.10    -1.69  0.05</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>leiden <span class="sc">|&gt;</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  psych<span class="sc">::</span><span class="fu">describe</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        vars   n    mean     sd  median trimmed     mad   min     max   range
+sexe*      1 956    1.27   0.44    1.00    1.21    0.00  1.00    2.00    1.00
+lftanam    2 956   89.78   2.92   89.07   89.43    2.81 85.48  103.54   18.06
+rrsyst     3 835  152.89  25.77  150.00  152.06   29.65 90.00  260.00  170.00
+rrdiast    4 830   82.78  13.13   80.00   82.61   14.83 50.00  140.00   90.00
+dwa*       5 956    1.24   0.43    1.00    1.18    0.00  1.00    2.00    1.00
+survda     6 956 1195.39 727.36 1196.50 1200.22 1000.76  2.00 2610.00 2608.00
+alb        7 727   40.77   3.70   41.00   41.02    2.97 21.00   52.00   31.00
+chol       8 724    5.70   1.27    5.70    5.64    1.19  2.70   10.90    8.20
+mmse       9 871   23.67   6.55   26.00   24.74    4.45  1.00   30.00   29.00
+woon*     10 956    2.78   1.59    4.00    2.72    1.48  1.00    5.00    4.00
+         skew kurtosis    se
+sexe*    1.03    -0.94  0.01
+lftanam  1.04     0.93  0.09
+rrsyst   0.39     0.04  0.89
+rrdiast  0.31     0.49  0.46
+dwa*     1.19    -0.58  0.01
+survda  -0.02    -1.31 23.52
+alb     -0.82     1.69  0.14
+chol     0.51     0.50  0.05
+mmse    -1.30     0.98  0.22
+woon*   -0.05    -1.73  0.05</code></pre>
+</div>
+</div>
+<ol start="6" type="1">
+<li>Create a bar plot using <code>geom_bar()</code> for each categorical variable in the data, mapping these variables to the <code>x</code>-axis with one bar per category per imputed data set.</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(leiden)[<span class="fu">map_lgl</span>(leiden, is.factor)] <span class="sc">%&gt;%</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map</span>(<span class="sc">~</span> <span class="fu">ggmice</span>(syn_param, <span class="at">mapping =</span> <span class="fu">aes_string</span>(.x, <span class="at">group =</span> <span class="st">'.imp'</span>)) <span class="sc">+</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>        <span class="fu">geom_bar</span>(<span class="at">mapping =</span> <span class="fu">aes</span>(<span class="at">y =</span> ..prop..),</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">position =</span> <span class="fu">position_dodge2</span>(),</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill =</span> <span class="st">"transparent"</span>,</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>                 <span class="at">show.legend =</span> <span class="cn">FALSE</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>  patchwork<span class="sc">::</span><span class="fu">wrap_plots</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: `aes_string()` was deprecated in ggplot2 3.0.0.
+ℹ Please use tidy evaluation idioms with `aes()`.
+ℹ See also `vignette("ggplot2-in-packages")` for more information.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: The dot-dot notation (`..prop..`) was deprecated in ggplot2 3.4.0.
+ℹ Please use `after_stat(prop)` instead.
+ℹ The deprecated feature was likely used in the ggmice package.
+  Please report the issue at &lt;https://github.com/amices/ggmice&gt;.</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="Synthetic_leiden_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(leiden)[<span class="fu">map_lgl</span>(leiden, is.numeric)] <span class="sc">%&gt;%</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map</span>(<span class="sc">~</span> <span class="fu">ggmice</span>(<span class="at">data =</span> syn_param, </span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">mapping =</span> <span class="fu">aes_string</span>(<span class="at">x =</span> .x, <span class="at">group =</span> <span class="st">'.imp'</span>)) <span class="sc">+</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>        <span class="fu">geom_density</span>(<span class="at">show.legend =</span> F)) <span class="sc">%&gt;%</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">wrap_plots</span>(<span class="at">ncol =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Synthetic_leiden_files/figure-html/unnamed-chunk-8-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="non-parametric-approach-to-synthesize-data" class="level2">
+<h2 class="anchored" data-anchor-id="non-parametric-approach-to-synthesize-data">7. Non-parametric approach to synthesize data</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>syn_cart <span class="ot">&lt;-</span> <span class="fu">mice</span>(leiden, </span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">m =</span> <span class="dv">10</span>, </span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>                 <span class="at">maxit =</span> <span class="dv">1</span>,</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">method =</span> <span class="st">"cart"</span>,</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">where =</span> where,</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>                 <span class="at">printFlag =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true" tabindex="-1"></a>syn_cart<span class="sc">$</span>imp <span class="ot">&lt;-</span> <span class="fu">Map</span>(<span class="cf">function</span>(imp_element, column_index) {</span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true" tabindex="-1"></a>    na_indices <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="fu">is.na</span>(leiden[, column_index]))</span>
+<span id="cb33-11"><a href="#cb33-11" aria-hidden="true" tabindex="-1"></a>    imp_element[na_indices, ] <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb33-12"><a href="#cb33-12" aria-hidden="true" tabindex="-1"></a>    imp_element</span>
+<span id="cb33-13"><a href="#cb33-13" aria-hidden="true" tabindex="-1"></a>}, syn_cart<span class="sc">$</span>imp, <span class="fu">seq_along</span>(syn_cart<span class="sc">$</span>imp))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p><strong>8. Perform a dry run (using <code>maxit = 0</code>) in <code>mice</code>. List the number of missing values per variable.</strong></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>ini <span class="ot">&lt;-</span> <span class="fu">mice</span>(leiden, <span class="at">maxit =</span> <span class="dv">0</span>)</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sort</span>(ini<span class="sc">$</span>nmis)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   sexe lftanam     dwa  survda    woon    mmse  rrsyst rrdiast     alb    chol 
+      0       0       0       0       0      85     121     126     229     232 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sort</span>(syn_cart<span class="sc">$</span>nmis)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   sexe lftanam     dwa  survda    woon    mmse  rrsyst rrdiast     alb    chol 
+      0       0       0       0       0      85     121     126     229     232 </code></pre>
+</div>
+</div>
+<ol start="9" type="1">
+<li>Create a bar plot using <code>geom_bar()</code> for each categorical variable in the data, mapping these variables to the <code>x</code>-axis with one bar per category per imputed data set.</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(leiden)[<span class="fu">map_lgl</span>(leiden, is.factor)] <span class="sc">%&gt;%</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map</span>(<span class="sc">~</span> <span class="fu">ggmice</span>(syn_cart, <span class="at">mapping =</span> <span class="fu">aes_string</span>(.x, <span class="at">group =</span> <span class="st">'.imp'</span>)) <span class="sc">+</span></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>        <span class="fu">geom_bar</span>(<span class="at">mapping =</span> <span class="fu">aes</span>(<span class="at">y =</span> ..prop..),</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">position =</span> <span class="fu">position_dodge2</span>(),</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill =</span> <span class="st">"transparent"</span>,</span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>                 <span class="at">show.legend =</span> <span class="cn">FALSE</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a>  patchwork<span class="sc">::</span><span class="fu">wrap_plots</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Synthetic_leiden_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(leiden)[<span class="fu">map_lgl</span>(leiden, is.numeric)] <span class="sc">%&gt;%</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map</span>(<span class="sc">~</span> <span class="fu">ggmice</span>(<span class="at">data =</span> syn_cart, </span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">mapping =</span> <span class="fu">aes_string</span>(<span class="at">x =</span> .x, <span class="at">group =</span> <span class="st">'.imp'</span>)) <span class="sc">+</span></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>        <span class="fu">geom_density</span>(<span class="at">show.legend =</span> F)) <span class="sc">%&gt;%</span></span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">wrap_plots</span>(<span class="at">ncol =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 1210 rows containing non-finite values (`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 1260 rows containing non-finite values (`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 2290 rows containing non-finite values (`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 2320 rows containing non-finite values (`stat_density()`).</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 850 rows containing non-finite values (`stat_density()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="Synthetic_leiden_files/figure-html/unnamed-chunk-11-2.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ol start="10" type="1">
+<li>Calculate the pMSE for the selected variables</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>param_mse <span class="ot">&lt;-</span> <span class="fu">complete</span>(syn_param, <span class="st">"all"</span>, <span class="at">include =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">utility.gen.list</span>(leiden, </span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>                   <span class="at">vars =</span> <span class="fu">c</span>(<span class="st">"survda"</span>, <span class="st">"rrsyst"</span>, <span class="st">"rrdiast"</span>),</span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>                   <span class="at">maxorder =</span> <span class="dv">0</span>, </span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>                   <span class="at">method =</span> <span class="st">"logit"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Fitting syntheses: 1 2 3 4 5 6 7 8 9 10 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>param_mse</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Utility score calculated by method: logit
+
+Call:
+utility.gen.list(object = complete(syn_param, "all", include = FALSE), 
+    data = leiden, method = "logit", maxorder = 0, vars = c("survda", 
+        "rrsyst", "rrdiast"))
+
+Mean utility results from 10 syntheses:
+     pMSE    S_pMSE 
+ 0.018061 55.252113 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>cart_mse <span class="ot">&lt;-</span> <span class="fu">complete</span>(syn_cart, <span class="st">"all"</span>, <span class="at">include =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">utility.gen.list</span>(leiden, </span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>                   <span class="at">vars =</span> <span class="fu">c</span>(<span class="st">"survda"</span>, <span class="st">"rrsyst"</span>, <span class="st">"rrdiast"</span>), </span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a>                   <span class="at">maxorder =</span> <span class="dv">0</span>, </span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>                   <span class="at">method =</span> <span class="st">"logit"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Fitting syntheses: 1 2 3 4 5 6 7 8 9 10 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>cart_mse</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Utility score calculated by method: logit
+
+Call:
+utility.gen.list(object = complete(syn_cart, "all", include = FALSE), 
+    data = leiden, method = "logit", maxorder = 0, vars = c("survda", 
+        "rrsyst", "rrdiast"))
+
+Mean utility results from 10 syntheses:
+    pMSE   S_pMSE 
+0.000051 0.155265 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>cart_mse <span class="ot">&lt;-</span> <span class="fu">mean</span>(cart_mse<span class="sc">$</span>pMSE) <span class="sc">/</span> ((<span class="dv">4-1</span>)<span class="sc">*</span>(<span class="dv">1</span><span class="sc">/</span><span class="dv">2</span>)<span class="sc">^</span><span class="dv">3</span><span class="sc">/</span>(<span class="dv">2</span><span class="sc">*</span><span class="fu">nrow</span>(leiden)))</span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a>param_mse <span class="ot">&lt;-</span> <span class="fu">mean</span>(param_mse<span class="sc">$</span>pMSE) <span class="sc">/</span> ((<span class="dv">4-1</span>)<span class="sc">*</span>(<span class="dv">1</span><span class="sc">/</span><span class="dv">2</span>)<span class="sc">^</span><span class="dv">3</span><span class="sc">/</span>(<span class="dv">2</span><span class="sc">*</span><span class="fu">nrow</span>(leiden)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="multivariate-data-utility" class="level2">
+<h2 class="anchored" data-anchor-id="multivariate-data-utility">Multivariate data utility</h2>
+<section id="general-utility-measures" class="level3">
+<h3 class="anchored" data-anchor-id="general-utility-measures">General utility measures</h3>
+<ol start="11" type="1">
+<li>Use the function <code>utility.gen.list()</code> from the <code>synthpop</code> package to calculate the <span class="math inline">\(pMSE\)</span>-ratio for each pair of variables for both synthetic sets. What do you see?__</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>param_dats <span class="ot">&lt;-</span> <span class="fu">complete</span>(syn_param, <span class="st">"all"</span>, <span class="at">include =</span> F)</span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>cart_dats <span class="ot">&lt;-</span> <span class="fu">complete</span>(syn_cart, <span class="st">"all"</span>, <span class="at">include =</span> F)</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a><span class="fu">utility.gen.list</span>(param_dats, leiden)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Running 50 permutations to get NULL utilities and printing every 10th.
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Utility score calculated by method: cart
+
+Call:
+utility.gen.list(object = param_dats, data = leiden)
+
+Null utilities simulated from a permutation test with 50 replications.
+
+
+Mean utility results from 10 syntheses:
+    pMSE   S_pMSE 
+0.237266 4.390622 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="fu">utility.gen.list</span>(cart_dats, leiden)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Running 50 permutations to get NULL utilities and printing every 10th.
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 
+synthesis 10 20 30 40 50 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Utility score calculated by method: cart
+
+Call:
+utility.gen.list(object = cart_dats, data = leiden)
+
+Null utilities simulated from a permutation test with 50 replications.
+
+
+Mean utility results from 10 syntheses:
+    pMSE   S_pMSE 
+0.091389 1.881102 </code></pre>
+</div>
+</div>
+<ol start="12" type="1">
+<li>Use the function utility.tables.list() from the synthpop package to calculate the -ratio for each pair of variables for both synthetic sets. What do you see?</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="fu">utility.tables.list</span>(param_dats, leiden,</span>
+<span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a>                    <span class="at">min.scale =</span> <span class="dv">0</span>, <span class="at">max.scale =</span> <span class="dv">40</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Maximum of plot scale set to 40 (lower than maximum in results 53.06551).</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Two-way utility: S_pMSE value plotted for 45 pairs of variables.
+
+Variable combinations with worst 5 utility scores (S_pMSE):
+   01.sexe:07.alb   01.sexe:08.chol     05.dwa:07.alb    05.dwa:08.chol 
+          53.0655           52.9760           52.2277           49.9561 
+04.rrdiast:05.dwa 
+          34.4405 </code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="Synthetic_leiden_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Medians and maxima of selected utility measures for all tables compared
+       Medians  Maxima
+pMSE    0.0278  0.0593
+S_pMSE 21.2462 53.0655
+df     29.0000 35.0000
+
+For more details of all scores use print.tabs = TRUE.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="fu">utility.tables.list</span>(cart_dats, leiden,</span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>                    <span class="at">min.scale =</span> <span class="dv">0</span>, <span class="at">max.scale =</span> <span class="dv">40</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Two-way utility: S_pMSE value plotted for 45 pairs of variables.
+
+Variable combinations with worst 5 utility scores (S_pMSE):
+    05.dwa:06.survda 03.rrsyst:04.rrdiast      09.mmse:10.woon 
+              4.4076               2.3806               2.2944 
+      07.alb:10.woon    06.survda:09.mmse 
+              2.1975               1.9564 </code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="Synthetic_leiden_files/figure-html/unnamed-chunk-14-2.png" class="img-fluid" width="672"></p>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Medians and maxima of selected utility measures for all tables compared
+       Medians  Maxima
+pMSE    0.0023  0.0045
+S_pMSE  1.2923  4.4076
+df     29.0000 35.0000
+
+For more details of all scores use print.tabs = TRUE.</code></pre>
+</div>
+</div>
+<ol start="13" type="1">
+<li>Append the original data to the synthetic data, and check whether some of the observations in the original data also occur in the synthetic data.</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb67"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a>combined_data <span class="ot">&lt;-</span> <span class="fu">complete</span>(syn_cart, <span class="dv">2</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb67-2"><a href="#cb67-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">bind_rows</span>(leiden)</span>
+<span id="cb67-3"><a href="#cb67-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb67-4"><a href="#cb67-4" aria-hidden="true" tabindex="-1"></a>duplicated_index <span class="ot">&lt;-</span> combined_data <span class="sc">%&gt;%</span></span>
+<span id="cb67-5"><a href="#cb67-5" aria-hidden="true" tabindex="-1"></a>  duplicated <span class="sc">%&gt;%</span></span>
+<span id="cb67-6"><a href="#cb67-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">which</span>()</span>
+<span id="cb67-7"><a href="#cb67-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb67-8"><a href="#cb67-8" aria-hidden="true" tabindex="-1"></a>duplicated_index</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>integer(0)</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>synthetic_leiden <span class="ot">&lt;-</span> <span class="fu">complete</span>(syn_cart, <span class="dv">2</span>)</span>
+<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a><span class="fu">save</span>(synthetic_leiden, <span class="at">file =</span> <span class="st">"syntheticData_2.RData"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

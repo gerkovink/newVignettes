@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.433">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Gerko Vink &amp; Stef van Buuren">
+<meta name="dcterms.date" content="2024-05-17">
+
+<title>mice: Combining inferences</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="CombiningIntereferences_files/libs/clipboard/clipboard.min.js"></script>
+<script src="CombiningIntereferences_files/libs/quarto-html/quarto.js"></script>
+<script src="CombiningIntereferences_files/libs/quarto-html/popper.min.js"></script>
+<script src="CombiningIntereferences_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="CombiningIntereferences_files/libs/quarto-html/anchor.min.js"></script>
+<link href="CombiningIntereferences_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="CombiningIntereferences_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="CombiningIntereferences_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="CombiningIntereferences_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="CombiningIntereferences_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article toc-left">
+<div id="quarto-sidebar-toc-left" class="sidebar toc-left">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#correlations" id="toc-correlations" class="nav-link active" data-scroll-target="#correlations">Correlations</a>
+  <ul class="collapse">
+  <li><a href="#why-does-the-average-data-set-not-serve-as-a-good-basis-for-analysis" id="toc-why-does-the-average-data-set-not-serve-as-a-good-basis-for-analysis" class="nav-link" data-scroll-target="#why-does-the-average-data-set-not-serve-as-a-good-basis-for-analysis">Why does the average data set not serve as a good basis for analysis?</a></li>
+  </ul></li>
+  <li><a href="#linear-models" id="toc-linear-models" class="nav-link" data-scroll-target="#linear-models">Linear models</a></li>
+  <li><a href="#model-comparisons" id="toc-model-comparisons" class="nav-link" data-scroll-target="#model-comparisons">Model comparisons</a></li>
+  <li><a href="#stepwise-modeling" id="toc-stepwise-modeling" class="nav-link" data-scroll-target="#stepwise-modeling">Stepwise modeling</a></li>
+  <li><a href="#conditional-means" id="toc-conditional-means" class="nav-link" data-scroll-target="#conditional-means">Conditional means</a></li>
+  <li><a href="#mean-differences-anova" id="toc-mean-differences-anova" class="nav-link" data-scroll-target="#mean-differences-anova">Mean differences: ANOVA</a></li>
+  </ul>
+</nav>
+</div>
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><code>mice</code>: Combining inferences</h1>
+<p class="subtitle lead">Multiple Imputation in Practice</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p><strong>Gerko Vink &amp; Stef van Buuren</strong> </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">May 17, 2024</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+</header>
+
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 16px;
+  }
+td {  /* Table  */
+  font-size: 14px;
+}
+h1.title {
+  font-size: 28px;
+  color: Black;
+}
+h1 { /* Header 1 */
+  font-size: 18px;
+}
+h2 { /* Header 2 */
+    font-size: 18px;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+<hr>
+<p>This is the fifth vignette in a series of ten.</p>
+<p>In this practical we will walk you through different ways of combining inferences based on multiply imputed data sets.</p>
+<p>All the best,</p>
+<p><a href="https://www.gerkovink.com">Gerko</a> and <a href="http://www.stefvanbuuren.name">Stef</a></p>
+<hr>
+<p><strong>1. Open <code>R</code> and load the following packages and fix the random seed.</strong></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mice) <span class="co"># Data imputation</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr) <span class="co"># Data manipulation</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(magrittr) <span class="co"># Flexible piping in R</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(purrr) <span class="co"># Flexible functional programming</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We choose seed value <code>123</code>. This is an arbitrary value; any value would be an equally good seed value. Fixing the random seed enables you (and others) to exactly replicate anything that involves random number generators. If you set the seed in your <code>R</code> instance to <code>123</code>, you will get the exact same results and plots as we present in this document if you follow the order and code of the exercises precisely.</p>
+<hr>
+<p><strong>2. Impute the <code>boys</code> data properly with passive imputation for <code>bmi</code> with the following parameters:</strong></p>
+<ul>
+<li><code>m = 10</code> for 10 imputed datasets.</li>
+<li><code>maxit = 6</code> to give the algorithm 6 iterations to obtain a stable solution.</li>
+<li><code>print = FALSE</code> to omit printing of the iteration and imputation history.</li>
+</ul>
+<p>We will use this data to go through the workflow of data analysis with <code>mids</code> (multiply imputed data set) objects.</p>
+<p>We start by creating the <code>method</code> vector and specify the passive imputation of <code>bmi</code></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>meth <span class="ot">&lt;-</span> <span class="fu">make.method</span>(boys)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>meth[<span class="st">"bmi"</span>] <span class="ot">&lt;-</span> <span class="st">"~ I(wgt / (hgt / 100)^2)"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Then we remove <code>bmi</code> as a predictor for <code>hgt</code> and <code>wgt</code> to avoid circularity (<code>bmi</code> feeding back into <code>hgt</code> and <code>wgt</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>pred <span class="ot">&lt;-</span> <span class="fu">make.predictorMatrix</span>(boys)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>pred[<span class="fu">c</span>(<span class="st">"hgt"</span>, <span class="st">"wgt"</span>), <span class="st">"bmi"</span>] <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>pred</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    age hgt wgt bmi hc gen phb tv reg
+age   0   1   1   1  1   1   1  1   1
+hgt   1   0   1   0  1   1   1  1   1
+wgt   1   1   0   0  1   1   1  1   1
+bmi   1   1   1   0  1   1   1  1   1
+hc    1   1   1   1  0   1   1  1   1
+gen   1   1   1   1  1   0   1  1   1
+phb   1   1   1   1  1   1   0  1   1
+tv    1   1   1   1  1   1   1  0   1
+reg   1   1   1   1  1   1   1  1   0</code></pre>
+</div>
+</div>
+<p>and we run the <code>mice</code> algorithm again with the new predictor matrix (we still ‘borrow’ the imputation methods object <code>meth</code> from before)</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>imp <span class="ot">&lt;-</span><span class="fu">mice</span>(boys, </span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>           <span class="at">meth =</span> meth, </span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">pred =</span> pred, </span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">print =</span> <span class="cn">FALSE</span>, </span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">m =</span> <span class="dv">10</span>, </span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">maxit =</span> <span class="dv">6</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We use the multiply imputed data set <code>imp</code> from now on.</p>
+<hr>
+<section id="correlations" class="level1">
+<h1>Correlations</h1>
+<hr>
+<p><strong>3. Calculate a correlation between all continuous variables for the imputed <code>boys</code> data</strong></p>
+<p>There are two ways in which we can calculate the correlation on the imputed data:</p>
+<ul>
+<li><strong>The wrong way: calculate an estimate over the <em>average imputed dataset</em></strong> .</li>
+</ul>
+<p>Quite often people are suggesting that using the average imputed dataset - so taking the average over the imputed data set such that any realized cell depicts the average over the corresponding data in the imputed data - would be efficient and conform Rubin’s rules. This is not true. Doing this will yield false inference.</p>
+<p>To demonstrate this, let’s create the averaged data set and exclude the non-numerical columns:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>ave <span class="ot">&lt;-</span> imp <span class="sc">%&gt;%</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  mice<span class="sc">::</span><span class="fu">complete</span>(<span class="st">"long"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(.id) <span class="sc">%&gt;%</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise_all</span>(<span class="at">.funs =</span> mean) <span class="sc">%&gt;%</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>.id, <span class="sc">-</span>.imp, <span class="sc">-</span>phb, <span class="sc">-</span>gen, <span class="sc">-</span>reg)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ave)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 6
+    age   hgt   wgt   bmi    hc    tv
+  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+1 0.035  50.1  3.65  14.5  33.7   2.5
+2 0.038  53.5  3.37  11.8  35     3.5
+3 0.057  50    3.14  12.6  35.2   2.8
+4 0.06   54.5  4.27  14.4  36.7   2.5
+5 0.062  57.5  5.03  15.2  37.3   2  
+6 0.068  55.5  4.66  15.1  37     2.1</code></pre>
+</div>
+</div>
+<p>If we now calculate Pearson’s correlation, rounded to two digits:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>cor.wrong <span class="ot">&lt;-</span> ave <span class="sc">%&gt;%</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cor</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">round</span>(<span class="at">digits =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>we obtain:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>cor.wrong</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     age  hgt  wgt  bmi   hc   tv
+age 1.00 0.98 0.95 0.63 0.86 0.86
+hgt 0.98 1.00 0.94 0.60 0.91 0.81
+wgt 0.95 0.94 1.00 0.79 0.84 0.87
+bmi 0.63 0.60 0.79 1.00 0.60 0.64
+hc  0.86 0.91 0.84 0.60 1.00 0.67
+tv  0.86 0.81 0.87 0.64 0.67 1.00</code></pre>
+</div>
+</div>
+<ul>
+<li><strong>The correct way: calculate an estimate for each imputed dataset and average over the estimates</strong></li>
+</ul>
+<p>It is best to do a <a href="https://en.wikipedia.org/wiki/Fisher_transformation">Fisher transformation</a> before pooling the correlation estimates - and a backtransformation afterwards. Therefore we define the following two functions that allow us to transform and backtransform any value:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>fisher.trans <span class="ot">&lt;-</span> <span class="cf">function</span>(x) <span class="dv">1</span><span class="sc">/</span><span class="dv">2</span> <span class="sc">*</span> <span class="fu">log</span>((<span class="dv">1</span> <span class="sc">+</span> x) <span class="sc">/</span> (<span class="dv">1</span> <span class="sc">-</span> x))</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>fisher.backtrans <span class="ot">&lt;-</span> <span class="cf">function</span>(x) (<span class="fu">exp</span>(<span class="dv">2</span> <span class="sc">*</span> x) <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">/</span> (<span class="fu">exp</span>(<span class="dv">2</span> <span class="sc">*</span> x) <span class="sc">+</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now, to calculate the correlation on the imputed data</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>cor <span class="ot">&lt;-</span> imp <span class="sc">%&gt;%</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  mice<span class="sc">::</span><span class="fu">complete</span>(<span class="st">"all"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map</span>(select, <span class="sc">-</span>phb, <span class="sc">-</span>gen, <span class="sc">-</span>reg) <span class="sc">%&gt;%</span>  </span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map</span>(stats<span class="sc">::</span>cor) <span class="sc">%&gt;%</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map</span>(fisher.trans)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>cor</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$`1`
+          age       hgt      wgt       bmi        hc        tv
+age       Inf 2.1971683 1.837486 0.7306936 1.2875134 1.1764013
+hgt 2.1971683       Inf 1.771810 0.6796283 1.5304395 1.0150829
+wgt 1.8374860 1.7718099      Inf 1.0661101 1.2173486 1.1632394
+bmi 0.7306936 0.6796283 1.066110       Inf 0.6755864 0.6965303
+hc  1.2875134 1.5304395 1.217349 0.6755864       Inf 0.7662706
+tv  1.1764013 1.0150829 1.163239 0.6965303 0.7662706       Inf
+
+$`2`
+          age       hgt      wgt       bmi        hc        tv
+age       Inf 2.1928290 1.839154 0.7396715 1.2805717 1.1540150
+hgt 2.1928290       Inf 1.772569 0.6866849 1.5335605 1.0247420
+wgt 1.8391536 1.7725691      Inf 1.0777861 1.2168596 1.1924681
+bmi 0.7396715 0.6866849 1.077786       Inf 0.6757144 0.7175002
+hc  1.2805717 1.5335605 1.216860 0.6757144       Inf 0.7716682
+tv  1.1540150 1.0247420 1.192468 0.7175002 0.7716682       Inf
+
+$`3`
+         age       hgt      wgt       bmi        hc        tv
+age      Inf 2.1980513 1.839317 0.7384530 1.2750962 1.1623767
+hgt 2.198051       Inf 1.772417 0.6877455 1.5248987 1.0039437
+wgt 1.839317 1.7724172      Inf 1.0774889 1.2124082 1.1611924
+bmi 0.738453 0.6877455 1.077489       Inf 0.6812475 0.7128481
+hc  1.275096 1.5248987 1.212408 0.6812475       Inf 0.7624198
+tv  1.162377 1.0039437 1.161192 0.7128481 0.7624198       Inf
+
+$`4`
+          age       hgt      wgt       bmi        hc        tv
+age       Inf 2.1961017 1.838918 0.7408736 1.2897920 1.1832366
+hgt 2.1961017       Inf 1.774843 0.6907368 1.5444453 1.0383982
+wgt 1.8389176 1.7748429      Inf 1.0800728 1.2256015 1.2125146
+bmi 0.7408736 0.6907368 1.080073       Inf 0.6827374 0.7359459
+hc  1.2897920 1.5444453 1.225601 0.6827374       Inf 0.7837830
+tv  1.1832366 1.0383982 1.212515 0.7359459 0.7837830       Inf
+
+$`5`
+          age      hgt      wgt       bmi        hc        tv
+age       Inf 2.195998 1.839240 0.7359324 1.2753551 1.1843788
+hgt 2.1959978      Inf 1.772784 0.6840920 1.5270459 1.0261064
+wgt 1.8392403 1.772784      Inf 1.0709307 1.2095539 1.1910395
+bmi 0.7359324 0.684092 1.070931       Inf 0.6742064 0.7114433
+hc  1.2753551 1.527046 1.209554 0.6742064       Inf 0.7587066
+tv  1.1843788 1.026106 1.191039 0.7114433 0.7587066       Inf
+
+$`6`
+          age       hgt      wgt       bmi        hc        tv
+age       Inf 2.1960817 1.839802 0.7380297 1.2683845 1.1098175
+hgt 2.1960817       Inf 1.773711 0.6872310 1.5185628 0.9710611
+wgt 1.8398023 1.7737114      Inf 1.0753483 1.2056839 1.1312176
+bmi 0.7380297 0.6872310 1.075348       Inf 0.6778270 0.6868663
+hc  1.2683845 1.5185628 1.205684 0.6778270       Inf 0.7000833
+tv  1.1098175 0.9710611 1.131218 0.6868663 0.7000833       Inf
+
+$`7`
+          age       hgt      wgt       bmi        hc        tv
+age       Inf 2.1962046 1.835994 0.7315759 1.2772518 1.1987818
+hgt 2.1962046       Inf 1.772959 0.6825245 1.5256606 1.0441973
+wgt 1.8359941 1.7729588      Inf 1.0685706 1.2150211 1.2020363
+bmi 0.7315759 0.6825245 1.068571       Inf 0.6805006 0.7139035
+hc  1.2772518 1.5256606 1.215021 0.6805006       Inf 0.7789061
+tv  1.1987818 1.0441973 1.202036 0.7139035 0.7789061       Inf
+
+$`8`
+          age       hgt      wgt       bmi        hc        tv
+age       Inf 2.1929580 1.840578 0.7439899 1.2888151 1.2043697
+hgt 2.1929580       Inf 1.773407 0.6923113 1.5404146 1.0468795
+wgt 1.8405779 1.7734068      Inf 1.0811815 1.2216658 1.2005007
+bmi 0.7439899 0.6923113 1.081182       Inf 0.6844591 0.7123828
+hc  1.2888151 1.5404146 1.221666 0.6844591       Inf 0.7906234
+tv  1.2043697 1.0468795 1.200501 0.7123828 0.7906234       Inf
+
+$`9`
+          age       hgt      wgt       bmi        hc        tv
+age       Inf 2.1955320 1.838406 0.7384463 1.2842531 1.1620413
+hgt 2.1955320       Inf 1.773995 0.6878719 1.5270096 1.0147341
+wgt 1.8384062 1.7739947      Inf 1.0758542 1.2183190 1.1719916
+bmi 0.7384463 0.6878719 1.075854       Inf 0.6857832 0.7065790
+hc  1.2842531 1.5270096 1.218319 0.6857832       Inf 0.7578655
+tv  1.1620413 1.0147341 1.171992 0.7065790 0.7578655       Inf
+
+$`10`
+          age      hgt      wgt       bmi        hc        tv
+age       Inf 2.194992 1.840380 0.7412752 1.2769159 1.1855404
+hgt 2.1949924      Inf 1.773964 0.6897810 1.5248482 1.0468461
+wgt 1.8403795 1.773964      Inf 1.0783437 1.2142874 1.2146691
+bmi 0.7412752 0.689781 1.078344       Inf 0.6849574 0.7124170
+hc  1.2769159 1.524848 1.214287 0.6849574       Inf 0.7733416
+tv  1.1855404 1.046846 1.214669 0.7124170 0.7733416       Inf</code></pre>
+</div>
+</div>
+<p>The object <code>cor</code> is a list over the <span class="math inline">\(m\)</span> imputations where each listed index is a correlation <code>matrix</code>. To calculate the average over the correlation matrices, we can add the <span class="math inline">\(m\)</span> listed indices and divide them by <span class="math inline">\(m\)</span>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>cor.rect <span class="ot">&lt;-</span> <span class="fu">Reduce</span>(<span class="st">"+"</span>, cor) <span class="sc">/</span> <span class="fu">length</span>(cor) <span class="co"># m is equal to the length of the list</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>cor.rect <span class="ot">&lt;-</span> <span class="fu">fisher.backtrans</span>(cor.rect)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>If we compare the wrong estimates in <code>cor.wrong</code></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>cor.wrong</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     age  hgt  wgt  bmi   hc   tv
+age 1.00 0.98 0.95 0.63 0.86 0.86
+hgt 0.98 1.00 0.94 0.60 0.91 0.81
+wgt 0.95 0.94 1.00 0.79 0.84 0.87
+bmi 0.63 0.60 0.79 1.00 0.60 0.64
+hc  0.86 0.91 0.84 0.60 1.00 0.67
+tv  0.86 0.81 0.87 0.64 0.67 1.00</code></pre>
+</div>
+</div>
+<p>with the correct estimates in <code>cor.rect</code></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(cor.rect, <span class="at">digits =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     age  hgt  wgt  bmi   hc   tv
+age  NaN 0.98 0.95 0.63 0.86 0.82
+hgt 0.98  NaN 0.94 0.60 0.91 0.77
+wgt 0.95 0.94  NaN 0.79 0.84 0.83
+bmi 0.63 0.60 0.79  NaN 0.59 0.61
+hc  0.86 0.91 0.84 0.59  NaN 0.64
+tv  0.82 0.77 0.83 0.61 0.64  NaN</code></pre>
+</div>
+</div>
+<p>We see that the wrong estimates in <code>cor.wrong</code> have the tendency to overestimate the correlation coefficient that is correctly combined following Rubin’s rules.</p>
+<p>The correct estimates have a diagonal of <code>NaN</code>’s, because the tranformation of a correlation of <code>1</code> yields <code>Inf</code> and the backtransformation of <code>Inf</code> has no representation in real number space. We know the diagonal is supposed to be 1, so we can simply correct this</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">diag</span>(cor.rect) <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>cor.rect</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          age       hgt       wgt       bmi        hc        tv
+age 1.0000000 0.9755309 0.9506921 0.6278711 0.8565901 0.8249429
+hgt 0.9755309 1.0000000 0.9439641 0.5959615 0.9103713 0.7711664
+wgt 0.9506921 0.9439641 1.0000000 0.7914006 0.8383737 0.8287360
+bmi 0.6278711 0.5959615 0.7914006 1.0000000 0.5917157 0.6110790
+hc  0.8565901 0.9103713 0.8383737 0.5917157 1.0000000 0.6436419
+tv  0.8249429 0.7711664 0.8287360 0.6110790 0.6436419 1.0000000</code></pre>
+</div>
+</div>
+<hr>
+<section id="why-does-the-average-data-set-not-serve-as-a-good-basis-for-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="why-does-the-average-data-set-not-serve-as-a-good-basis-for-analysis">Why does the average data set not serve as a good basis for analysis?</h2>
+<p>In <a href="https://stefvanbuuren.name/fimd/workflow.html"><code>FIMD v2</code>, paragraph 5.1.2</a> Stef mentions the following:</p>
+<blockquote class="blockquote">
+<p>The average workflow is faster and easier than the correct methods, since there is no need to replicate the analyses <span class="math inline">\(m\)</span> times. In the words of Dempster and Rubin (1983), this workflow is</p>
+<p><strong><em>seductive because it can lull the user into the pleasurable state of believing that the data are complete after all.</em></strong></p>
+<p>The ensuing statistical analysis does not know which data are observed and which are missing, and treats all data values as real, which will underestimate the uncertainty of the parameters. The reported standard errors and p-values after data-averaging are generally too low. The correlations between the variables of the averaged data will be too high. For example, the correlation matrix in the average data are more extreme than the average of the <span class="math inline">\(m\)</span> correlation matrices, which is an example of ecological fallacy. As researchers tend to like low p-values and high correlations, there is a cynical reward for the analysis of the average data. However, analysis of the average data cannot give a fair representation of the uncertainties associated with the underlying data, and hence is not recommended.</p>
+</blockquote>
+<hr>
+<p>So, please stay away from averaging the imputed data sets. Instead, use the correct workflow of analyzing the imputed sets separately and combining the inference afterwards.</p>
+<hr>
+</section>
+</section>
+<section id="linear-models" class="level1">
+<h1>Linear models</h1>
+<hr>
+<p><strong>4. Fit the following linear model on the imputed data:</strong></p>
+<ul>
+<li><code>lm(age ~ wgt + hgt)</code></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>fit1.lm <span class="ot">&lt;-</span> imp <span class="sc">%&gt;%</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">with</span>(<span class="fu">lm</span>(age <span class="sc">~</span> wgt <span class="sc">+</span> hgt))</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>est1.lm <span class="ot">&lt;-</span> <span class="fu">pool</span>(fit1.lm)</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>est1.lm</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Class: mipo    m = 10 
+         term  m    estimate         ubar            b            t dfcom
+1 (Intercept) 10 -7.47606562 5.886021e-02 7.345696e-05 5.894102e-02   745
+2         wgt 10  0.07250458 3.471186e-05 1.548528e-07 3.488220e-05   745
+3         hgt 10  0.10631248 1.088103e-05 3.591635e-08 1.092054e-05   745
+        df         riv      lambda         fmi
+1 741.8745 0.001372789 0.001370907 0.004052242
+2 737.9341 0.004907203 0.004883240 0.007569354
+3 739.5238 0.003630905 0.003617769 0.006301541</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(est1.lm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         term    estimate   std.error statistic       df       p.value
+1 (Intercept) -7.47606562 0.242777710 -30.79387 741.8745 8.864898e-135
+2         wgt  0.07250458 0.005906115  12.27619 737.9341  1.179672e-31
+3         hgt  0.10631248 0.003304623  32.17083 739.5238 1.071290e-142</code></pre>
+</div>
+</div>
+<hr>
+<p><strong>5. Now expand the linear model from (4) with a squared term for <code>hgt</code>:</strong></p>
+<ul>
+<li><code>lm(age ~ wgt + hgt + I(hgt^2))</code></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>fit2.lm <span class="ot">&lt;-</span> imp <span class="sc">%&gt;%</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">with</span>(<span class="fu">lm</span>(age <span class="sc">~</span> wgt <span class="sc">+</span> hgt <span class="sc">+</span> <span class="fu">I</span>(hgt<span class="sc">^</span><span class="dv">2</span>)))</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>est2.lm <span class="ot">&lt;-</span> <span class="fu">pool</span>(fit2.lm)</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>est2.lm</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Class: mipo    m = 10 
+         term  m      estimate         ubar            b            t dfcom
+1 (Intercept) 10 -4.0568412458 2.479221e-01 4.443015e-04 2.484108e-01   744
+2         wgt 10  0.0317693024 5.959819e-05 1.056828e-07 5.971444e-05   744
+3         hgt 10  0.0389756596 8.508940e-05 2.479060e-07 8.536210e-05   744
+4    I(hgt^2) 10  0.0003577151 2.116907e-09 4.546843e-12 2.121909e-09   744
+        df         riv      lambda         fmi
+1 740.3124 0.001971311 0.001967433 0.004652798
+2 740.3326 0.001950580 0.001946783 0.004632131
+3 739.0178 0.003204824 0.003194586 0.005881329
+4 739.9209 0.002362658 0.002357089 0.005042820</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(est2.lm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         term      estimate    std.error statistic       df      p.value
+1 (Intercept) -4.0568412458 4.984083e-01 -8.139594 740.3124 1.677234e-15
+2         wgt  0.0317693024 7.727512e-03  4.111194 740.3326 4.376700e-05
+3         hgt  0.0389756596 9.239161e-03  4.218528 739.0178 2.764546e-05
+4    I(hgt^2)  0.0003577151 4.606418e-05  7.765580 739.9209 2.710945e-14</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="model-comparisons" class="level1">
+<h1>Model comparisons</h1>
+<hr>
+<p><strong>6. Compare the models from (4) and (5) to see which model would yield the best fit:</strong></p>
+<p>We have three choices for evaluation:</p>
+<ul>
+<li>The <a href="https://stefvanbuuren.name/fimd/sec-multiparameter.html"><span class="math inline">\(D_1\)</span> multivariate Wald test</a></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">D1</span>(fit2.lm, fit1.lm) <span class="co"># multivariate Wald test</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   test statistic df1      df2 dfcom     p.value         riv
+ 1 ~~ 2  60.30423   1 740.9791   744 2.70652e-14 0.002362658</code></pre>
+</div>
+</div>
+<p>The <span class="math inline">\(D_1\)</span> statistic requires a variance covariance matrix for the estimates.</p>
+<ul>
+<li>The <a href="https://stefvanbuuren.name/fimd/sec-multiparameter.html"><span class="math inline">\(D_2\)</span> Combining test statistic</a></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">D2</span>(fit2.lm, fit1.lm) <span class="co"># combining test statistics</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   test statistic df1      df2 dfcom      p.value         riv
+ 1 ~~ 2  60.24409   1 800930.6    NA 8.389226e-15 0.003363428</code></pre>
+</div>
+</div>
+<p>The <span class="math inline">\(D_2\)</span> requires only the test statistics (e.g.&nbsp;p-values or <span class="math inline">\(X^2\)</span> values) and hence is more flexible to apply than the <span class="math inline">\(D_1\)</span> statistic: But this comes at a cost as the resulting inference is less informed by the data than under the <span class="math inline">\(D_1\)</span> statistic.</p>
+<ul>
+<li>The <a href="https://stefvanbuuren.name/fimd/sec-multiparameter.html"><span class="math inline">\(D_3\)</span> Likelihood ratio test</a></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">D3</span>(fit2.lm, fit1.lm) <span class="co"># likelihood ratio test</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   test statistic df1      df2 dfcom      p.value         riv
+ 1 ~~ 2   58.2858   1 494231.8   744 2.270773e-14 0.002481764</code></pre>
+</div>
+</div>
+<p>For large sample size, <span class="math inline">\(D_3\)</span> is equivalent to <span class="math inline">\(D_1\)</span>, however, <span class="math inline">\(D_3\)</span> does not require the covariances of the complete data estimates. It is the preferred method for testing random effects, and connects to global fit statistics in structural equation models. The likelihood ratio test does not require normality. For large <code>riv</code> (i.e.&nbsp;values &gt; 10), the <span class="math inline">\(D_3\)</span> statistics must be taken with a grain of salt. In general, given what we know today, the <span class="math inline">\(D_1\)</span> statistic may be slightly more efficient than <span class="math inline">\(D_3\)</span> for small samples (i.e.&nbsp;<span class="math inline">\(&lt; 200\)</span> cases); for larger samples (i.e.&nbsp;<span class="math inline">\(\geq 200\)</span> cases) the <span class="math inline">\(D_1\)</span> and <span class="math inline">\(D_3\)</span> appear equally good and a choice between them is mostly a matter of convenience –&gt; see also <a href="https://stefvanbuuren.name/fimd/sec-multiparameter.html">paragraph 5.3.4 in <code>FIMD v2</code></a> for a comparison on when to use <span class="math inline">\(D_1\)</span>, <span class="math inline">\(D_2\)</span> and/or <span class="math inline">\(D_3\)</span>.</p>
+<hr>
+</section>
+<section id="stepwise-modeling" class="level1">
+<h1>Stepwise modeling</h1>
+<hr>
+<p><strong>7. Fit a stepwise linear model to predict <code>hgt</code> seperately to each of the imputed data sets.</strong></p>
+<p>We can use the <code>step()</code> function in <code>R</code> to select formula-based models. We start by specifying the scope of the evaluations:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>scope <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">upper =</span> <span class="sc">~</span> age <span class="sc">+</span> wgt <span class="sc">+</span> hc <span class="sc">+</span> gen <span class="sc">+</span> phb <span class="sc">+</span> tv <span class="sc">+</span> reg,</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>              <span class="at">lower =</span> <span class="sc">~</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The scope specifies the upper bound of the model (all variable to run the selection on) and lower bound of the mode, where a <code>1</code> indicates an intercept only model.</p>
+<p>We can then specify the expressions to be evaluated:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>expr <span class="ot">&lt;-</span> <span class="fu">expression</span>(f1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(hgt <span class="sc">~</span> <span class="dv">1</span>),</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>                   f2 <span class="ot">&lt;-</span> <span class="fu">step</span>(f1, </span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>                              <span class="at">scope =</span> scope, </span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>                              <span class="at">direction =</span> <span class="st">"forward"</span>,</span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>                              <span class="at">trace =</span> <span class="dv">0</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>                              ))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>where <code>f1</code> is the linear model to be evaluated and <code>f2</code> the <code>step()</code> function that evaluates the <code>f1</code> function. Finally, we apply the <code>with()</code> function to evaluate the expression <code>expr</code> on object <code>imp</code>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">with</span>(imp, expr)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The <code>fit</code> object contains the model evaluations To calculate the times each variable was selected, we can run:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>formulas <span class="ot">&lt;-</span> <span class="fu">lapply</span>(fit<span class="sc">$</span>analyses, formula)</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>terms <span class="ot">&lt;-</span> <span class="fu">lapply</span>(formulas, terms)</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>votes <span class="ot">&lt;-</span> <span class="fu">unlist</span>(<span class="fu">lapply</span>(terms, labels))</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(votes)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>votes
+age gen  hc phb reg  tv wgt 
+ 10   2  10  10   1   7  10 </code></pre>
+</div>
+</div>
+<p>We see that <code>reg</code> is only used in 1 models based on the 10 imputed datasets. <code>tv</code> is used in 7 of the models and <code>gen</code> is used in 2 of the 10 completed-data models. <code>wgt</code>, <code>hc</code>, <code>age</code> and <code>phb</code> are used in all models.</p>
+<p>To determine if <code>gen</code> should be a part of the final model, we may run a multivariate Wald test:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>fit.gen <span class="ot">&lt;-</span> <span class="fu">with</span>(imp, <span class="fu">lm</span>(hgt <span class="sc">~</span> age <span class="sc">+</span> hc <span class="sc">+</span> phb <span class="sc">+</span> wgt <span class="sc">+</span> gen))</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>fit.nogen <span class="ot">&lt;-</span> <span class="fu">with</span>(imp, <span class="fu">lm</span>(hgt <span class="sc">~</span> age <span class="sc">+</span> hc <span class="sc">+</span> phb <span class="sc">+</span> wgt))</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a><span class="fu">D1</span>(fit.gen, fit.nogen)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   test statistic df1    df2 dfcom   p.value       riv
+ 1 ~~ 2 0.9319137   4 221.83   735 0.4461966 0.4369768</code></pre>
+</div>
+</div>
+<p>With a p-value of <code>.059</code> we could conclude that <code>gen</code> is not strictly needed in this model. We might also investigate the BIC on the seperate imputed sets and compare those across (not within) models. We draw the same conclusion from this evaluation - the BIC is lower for the model without <code>gen</code> - although not by much. But then again, the p-value indicated the same trend.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>BIC.gen <span class="ot">&lt;-</span> fit.gen<span class="sc">$</span>analyses <span class="sc">%&gt;%</span></span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sapply</span>(BIC) </span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>BIC.nogen <span class="ot">&lt;-</span> fit.nogen<span class="sc">$</span>analyses <span class="sc">%&gt;%</span></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sapply</span>(BIC)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>To count the model evaluations in favor of <code>BIC.nogen</code> –&gt; better fit means lower BIC:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>BIC.gen</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] 5086.363 5078.323 5078.325 5100.998 5094.769 5085.871 5084.575 5099.043
+ [9] 5137.931 5125.774</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>BIC.nogen</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] 5065.019 5063.648 5058.033 5082.689 5079.410 5070.772 5065.247 5080.096
+ [9] 5113.299 5101.303</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(BIC.gen <span class="sc">&gt;</span> BIC.nogen)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10</code></pre>
+</div>
+</div>
+<p>Please not that we can compare the BIC only over the models, not over the imputed data sets. The realized imputations differ for each set, but for each imputed set, the model comparison is based on the same realization. The <code>sum(BIC.gen &gt; BIC.nogen)</code> compares only the BIC’s against its counterpart for the same imputed data set. The resulting outcome can be considered as a majority vote: in our case 10 out of 10 model comparisons are in favor of the model without <code>gen</code> as a predictor.</p>
+<hr>
+</section>
+<section id="conditional-means" class="level1">
+<h1>Conditional means</h1>
+<hr>
+<p><strong>8. Calculate the average mean for <code>bmi</code> for every region <code>reg</code> over the imputed data.</strong></p>
+<p>To study the means for <code>bmi</code> conditionally on <code>reg</code> to get a picture of what the differences are:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>imp <span class="sc">%&gt;%</span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>  mice<span class="sc">::</span><span class="fu">complete</span>(<span class="st">"long"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(reg, bmi) <span class="sc">%&gt;%</span></span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(reg) <span class="sc">%&gt;%</span></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise_all</span>(<span class="at">.funs =</span> mean)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 5 × 2
+  reg     bmi
+  &lt;fct&gt; &lt;dbl&gt;
+1 north  19.3
+2 east   17.8
+3 west   17.9
+4 south  17.7
+5 city   18.2</code></pre>
+</div>
+</div>
+<p>To also obtain information about the standard error of the mean, we could extend the <code>summarise_all()</code> evaluation wit a custom standard error function:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>se <span class="ot">&lt;-</span> <span class="cf">function</span>(x){</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sd</span>(x) <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="fu">length</span>(x))</span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>and then calculate the summary again</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>imp <span class="sc">%&gt;%</span></span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>  mice<span class="sc">::</span><span class="fu">complete</span>(<span class="st">"long"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(reg, bmi) <span class="sc">%&gt;%</span></span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(reg) <span class="sc">%&gt;%</span></span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise_all</span>(<span class="fu">list</span>(<span class="sc">~</span> <span class="fu">mean</span>(.), <span class="sc">~</span><span class="fu">se</span>(.)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 5 × 3
+  reg    mean     se
+  &lt;fct&gt; &lt;dbl&gt;  &lt;dbl&gt;
+1 north  19.3 0.120 
+2 east   17.8 0.0742
+3 west   17.9 0.0601
+4 south  17.7 0.0697
+5 city   18.2 0.0965</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="mean-differences-anova" class="level1">
+<h1>Mean differences: ANOVA</h1>
+<hr>
+<p><strong>9. Test whether the means differ.</strong></p>
+<p>This is best done with an ANOVA. To do this correctly, we can apply the following workflow. First, we fit an intercept only model</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>fit.empty <span class="ot">&lt;-</span> imp <span class="sc">%&gt;%</span></span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>  mice<span class="sc">::</span><span class="fu">complete</span>(<span class="st">"all"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map</span>(lm, <span class="at">formula =</span> bmi <span class="sc">~</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>and then we fit the model with <code>reg</code> as a predictor</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>fit.reg <span class="ot">&lt;-</span> imp <span class="sc">%&gt;%</span></span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>  mice<span class="sc">::</span><span class="fu">complete</span>(<span class="st">"all"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map</span>(lm, <span class="at">formula =</span> bmi <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> reg)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We can calculate the separate ANOVA’s from each fitted model:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>aov.empty <span class="ot">&lt;-</span> <span class="fu">lapply</span>(<span class="fu">with</span>(imp, <span class="fu">lm</span>(age <span class="sc">~</span> <span class="dv">1</span>))<span class="sc">$</span>analyses, aov)</span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>aov.reg <span class="ot">&lt;-</span> <span class="fu">lapply</span>(<span class="fu">with</span>(imp, <span class="fu">lm</span>(age <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> reg))<span class="sc">$</span>analyses, aov)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>And look at the summaries:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="fu">lapply</span>(aov.empty, summary)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[[1]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)
+Residuals   747  35503   47.53               
+
+[[2]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)
+Residuals   747  35503   47.53               
+
+[[3]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)
+Residuals   747  35503   47.53               
+
+[[4]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)
+Residuals   747  35503   47.53               
+
+[[5]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)
+Residuals   747  35503   47.53               
+
+[[6]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)
+Residuals   747  35503   47.53               
+
+[[7]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)
+Residuals   747  35503   47.53               
+
+[[8]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)
+Residuals   747  35503   47.53               
+
+[[9]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)
+Residuals   747  35503   47.53               
+
+[[10]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)
+Residuals   747  35503   47.53               </code></pre>
+</div>
+</div>
+<p>The summary for the <code>aov.empty</code> object has no p-values. This is expected as we are fitting an empty model (without any predictors) and hence have no model Mean Squares (MS) to calculate and test the ratio</p>
+<p><span class="math display">\[F = \frac{\text{Model MS}}{\text{Residual MS}}\]</span></p>
+<p>We do have those components for the model with <code>reg</code> included as predictor:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="fu">lapply</span>(aov.reg, summary)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[[1]]
+             Df Sum Sq Mean Sq F value  Pr(&gt;F)   
+reg           4    757  189.23   4.046 0.00298 **
+Residuals   743  34746   46.77                   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+[[2]]
+             Df Sum Sq Mean Sq F value  Pr(&gt;F)   
+reg           4    745  186.34   3.983 0.00332 **
+Residuals   743  34758   46.78                   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+[[3]]
+             Df Sum Sq Mean Sq F value  Pr(&gt;F)   
+reg           4    739  184.67   3.947 0.00354 **
+Residuals   743  34765   46.79                   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+[[4]]
+             Df Sum Sq Mean Sq F value Pr(&gt;F)   
+reg           4    756  188.97   4.041  0.003 **
+Residuals   743  34747   46.77                  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+[[5]]
+             Df Sum Sq Mean Sq F value  Pr(&gt;F)   
+reg           4    743  185.86   3.973 0.00338 **
+Residuals   743  34760   46.78                   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+[[6]]
+             Df Sum Sq Mean Sq F value  Pr(&gt;F)   
+reg           4    757  189.23   4.046 0.00298 **
+Residuals   743  34746   46.77                   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+[[7]]
+             Df Sum Sq Mean Sq F value  Pr(&gt;F)   
+reg           4    719  179.82   3.841 0.00425 **
+Residuals   743  34784   46.82                   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+[[8]]
+             Df Sum Sq Mean Sq F value  Pr(&gt;F)   
+reg           4    739  184.68   3.947 0.00354 **
+Residuals   743  34765   46.79                   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+[[9]]
+             Df Sum Sq Mean Sq F value  Pr(&gt;F)   
+reg           4    742  185.61   3.967 0.00341 **
+Residuals   743  34761   46.78                   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+[[10]]
+             Df Sum Sq Mean Sq F value  Pr(&gt;F)   
+reg           4    755  188.86   4.038 0.00302 **
+Residuals   743  34748   46.77                   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p>We find that each of the separate ANOVA’s indicates significance, meaning that there is an overall effect for <code>reg</code> on <code>bmi</code> in each imputed data set.</p>
+<p>To obtain an overall estimate for the ANOVA we can simply compare the empty model to the model with <code>reg</code> included:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb61"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a><span class="fu">D1</span>(fit.reg, fit.empty)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   test statistic df1      df2 dfcom    p.value         riv
+ 1 ~~ 2  4.604686   4 739.1867   743 0.00111894 0.009690917</code></pre>
+</div>
+</div>
+<p>And find that indeed the overall (i.e.&nbsp;pooled) effect over the imputations is also significant, which is not surprising as the F-values for the separate tests show little variation.</p>
+<hr>
+<p><strong>- End of practical</strong></p>
+<hr>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
