@@ -1,7 +1,29 @@
-
-
 # Mice vignettes in a new style. 
 New and improved quarto-based [`mice`](https://www.amices.org) vignettes with [`ggmice`](https://github.com/amices/ggmice) plots, accessible data for sensitivity analysis and many bug-fixes. 
+
+We suggest going through these vignettes in the following order
+
+- [1. Ad Hoc methods and the mice algorithm](1AdHoc/Adhoc_methods_and_mice.html)
+- [2. Convergence and pooling](2ConvPool/Convergence_and_pooling.html)
+- [3. Inspecting how the observed data and missingness are related](3Inspect/The_imputation_and_nonresponse_models.html)
+- [4. Passive imputation and post-processing](4PassivePostProcess/Passive_imputation_and_Post-processing.html)
+- [5. Combining inferences](5CombInference/CombiningInferences.html)
+- [6. Imputing multi-level data](6Multilevel/Imputing_multilevel_data.html)
+- [7. Sensitivity analysis with `mice`](7Sensitivity/SensitivityAnalysis.html)
+
+  - [Generating the synthetic set in Vignette 7](7Sensitivity/Synthetic_leiden.html)
+  
+- [8. `futuremice`: Wrapper for parallel `mice` imputation through futures](8FutureMice/Vignette_futuremice.html)
+- [9. Multivariate PMM for imputing multiple columns simultaneously](9Mpmm/mpmm_vignette.html)
+- [10. Generating synthetic data with high utility using `mice`](10Synthetic/synthetic.html)
+
+---
+
+All the best,
+
+The `mice` development team
+
+---
 
 # Contributors
 With contributions by (in alphabetical order): 
