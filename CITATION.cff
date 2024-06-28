@@ -17,8 +17,8 @@ authors:
 - family-names: "Van Buuren"
   given-names: "Stef"
   orcid: "https://orcid.org/0000-0003-1098-2119"
-
 title: "A series of instructional vignettes for mice in R with applications to real and synthetic data"
 version: v0.1
 date-released: 2024-06-28
+doi: 10.5281/zenodo.12586939
 url: "https://github.com/gerkovink/newVignettes"
