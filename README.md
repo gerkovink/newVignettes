@@ -8,8 +8,8 @@ We suggest going through these vignettes in the following order
 - [3. Inspecting how the observed data and missingness are related](3Inspect/The_imputation_and_nonresponse_models.html)
 - [4. Passive imputation and post-processing](4PassivePostProcess/Passive_imputation_and_Post-processing.html)
 - [5. Combining inferences](5CombInference/CombiningInferences.html)
-- [6. Imputing multi-level data](6Multilevel/Imputing_multilevel_data.html)
-- [7. Sensitivity analysis with `mice`](7Sensitivity/SensitivityAnalysis.html)
+- [6. Imputing multi-level data](6MultiLevel/Imputing_multilevel_data.html)
+- [7. Sensitivity analysis with `mice`](7Sensitivity/SenstivityAnalysis.html)
 
   - [Generating the synthetic set in Vignette 7](7Sensitivity/Synthetic_leiden.html)
   
